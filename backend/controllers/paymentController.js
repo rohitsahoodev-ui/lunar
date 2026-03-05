@@ -2,10 +2,24 @@ import { Invoice } from '../models/Invoice.js';
 import { Payment } from '../models/Payment.js';
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_KEY);
+let stripeInstance = null;
+
+const getStripe = () => {
+  if (!stripeInstance) {
+    const apiKey = process.env.STRIPE_KEY;
+    if (!apiKey) {
+      // Return a mock or throw a more descriptive error if needed, 
+      // but for now let's just ensure it doesn't crash on module load.
+      throw new Error('STRIPE_KEY is not defined in environment variables');
+    }
+    stripeInstance = new Stripe(apiKey);
+  }
+  return stripeInstance;
+};
 
 export const createStripeSession = async (req, res) => {
   try {
+    const stripe = getStripe();
     const { invoiceId } = req.params;
     const invoice = await Invoice.getById(invoiceId);
     
@@ -40,6 +54,7 @@ export const createStripeSession = async (req, res) => {
 
 export const handlePaymentSuccess = async (req, res) => {
   try {
+    const stripe = getStripe();
     const { session_id, invoice_id } = req.query;
     const session = await stripe.checkout.sessions.retrieve(session_id);
     
